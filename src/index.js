@@ -1,4 +1,4 @@
-const url = 'https://api.openai.com/v1/audio/transcriptions'
+const url = 'https://api.chatanywhere.tech/v1/audio/transcriptions'
 
 const transcribe = (apiKey, file, language, response_format) => {
     const formData = new FormData()
