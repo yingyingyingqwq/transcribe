@@ -7,12 +7,14 @@
         <title>转录</title>
         <link rel="stylesheet" href="style.css" type="text/css">
         <script src="index.js"></script>
+        <link rel="icon" type="image/x-icon" href="teitetsu.svg">
     </head>
     <body>
         <div class="container">
             API 密钥：
             <input type="text" id="api-key" placeholder="sk-xxxx">
             <form id="upload-form">
+                语言：
                 <select name="language" id="language">
                     <option value="" selected>自动检测语言（较慢）</option>
                     <option value="en">英语</option>
@@ -74,6 +76,7 @@
                     <option value="cy">威尔士语</option>
                 </select>
                 <br />
+                输出格式：
                 <select id="response_format" name="response_format">
                     <option value="verbose_json" selected>普通文本</option>
                     <option value="srt">SRT</option>
