@@ -27,7 +27,6 @@ const transcribe = (apiKey, file, language, response_format) => {
     }).catch(error => console.error(error))
 }
 
-
 const hideStartView = () => {
     document.querySelector('#start-view').classList.add('hidden')
 }
@@ -56,7 +55,6 @@ const setupAPIKeyInput = () => {
     }
 }
 
-
 const updateTextareaSize = (element) => {
     element.style.height = 0
 
@@ -76,7 +74,6 @@ const setTranscribingMessage = (text) => {
 }
 
 const setTranscribedPlainText = (text) => {
-    // outputElement.innerText creates unnecessary <br> elements
     text = text.replaceAll('&', '&amp;')
     text = text.replaceAll('<', '&lt;')
     text = text.replaceAll('>', '&gt;')
@@ -93,13 +90,23 @@ const setTranscribedSegments = (segments) => {
     }
 }
 
+const downloadFile = (content, filename) => {
+    const element = document.createElement('a')
+    const blob = new Blob([content], { type: 'text/plain' })
+    element.href = URL.createObjectURL(blob)
+    element.download = filename
+    document.body.appendChild(element)
+    element.click()
+    document.body.removeChild(element)
+}
+
 window.addEventListener('load', () => {
     setupAPIKeyInput()
     outputElement = document.querySelector('#output')
 
     const fileInput = document.querySelector('#audio-file')
     fileInput.addEventListener('change', () => {
-        setTranscribingMessage('Transcribing...')
+        setTranscribingMessage('转录中...')
 
         const apiKey = localStorage.getItem('api-key')
         const file = fileInput.files[0]
@@ -112,9 +119,13 @@ window.addEventListener('load', () => {
                 setTranscribedSegments(transcription.segments)
             } else {
                 setTranscribedPlainText(transcription)
+                if (response_format === 'srt') {
+                    downloadFile(transcription, 'transcription.srt')
+                } else if (response_format === 'vtt') {
+                    downloadFile(transcription, 'transcription.vtt')
+                }
             }
 
-            // Allow multiple uploads without refreshing the page
             fileInput.value = null
         })
     })
