@@ -1,12 +1,15 @@
 const url = 'https://api.chatanywhere.tech/v1/audio/transcriptions'
 
-const transcribe = (apiKey, file, language, response_format) => {
+const transcribe = (apiKey, file, language, response_format, prompt) => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('model', 'whisper-1')
     formData.append('response_format', response_format || 'verbose_json')
     if (language) {
         formData.append('language', language)
+    }
+    if (prompt) {
+        formData.append('prompt', prompt)
     }
 
     const headers = new Headers()
@@ -26,6 +29,7 @@ const transcribe = (apiKey, file, language, response_format) => {
         }
     }).catch(error => console.error(error))
 }
+
 
 const hideStartView = () => {
     document.querySelector('#start-view').classList.add('hidden')
@@ -100,33 +104,85 @@ const downloadFile = (content, filename) => {
     document.body.removeChild(element)
 }
 
+// 保存快捷提示词到本地存储
+const saveQuickPrompt = () => {
+    const quickPromptInput = document.querySelector('#quick-prompt');
+    const savedQuickPrompts = localStorage.getItem('quick-prompts') || '';
+    const newQuickPrompts = savedQuickPrompts ? `${savedQuickPrompts},${quickPromptInput.value}` : quickPromptInput.value;
+    localStorage.setItem('quick-prompts', newQuickPrompts);
+    quickPromptInput.value = ''; // 清空输入框
+    loadQuickPrompts(); // 加载并显示快捷提示词
+};
+
+// 加载并显示快捷提示词
+const loadQuickPrompts = () => {
+    const savedQuickPrompts = localStorage.getItem('quick-prompts') || '';
+    const quickPrompts = savedQuickPrompts.split(',');
+    const container = document.querySelector('#quick-prompts-container');
+    container.innerHTML = ''; // 清空容器
+
+    quickPrompts.forEach((prompt, index) => {
+        if (prompt) {
+            const buttonContainer = document.createElement('div');
+            buttonContainer.classList.add('quick-prompt-item');
+
+            const button = document.createElement('button');
+            button.innerText = prompt;
+            button.classList.add('quick-prompt-button');
+            button.addEventListener('click', () => {
+                const promptInput = document.querySelector('#prompt');
+                promptInput.value += (promptInput.value ? ',' : '') + prompt;
+            });
+
+            const deleteButton = document.createElement('button');
+            deleteButton.innerText = '×';
+            deleteButton.classList.add('quick-prompt-button');
+            deleteButton.addEventListener('click', (event) => {
+                event.stopPropagation(); // 阻止事件冒泡，避免触发快捷提示词按钮的点击事件
+                const updatedQuickPrompts = quickPrompts.filter((_, i) => i !== index).join(',');
+                localStorage.setItem('quick-prompts', updatedQuickPrompts);
+                loadQuickPrompts(); // 重新加载快捷提示词
+            });
+
+            buttonContainer.appendChild(button);
+            buttonContainer.appendChild(deleteButton);
+            container.appendChild(buttonContainer);
+        }
+    });
+};
+
+// 设置事件监听器
 window.addEventListener('load', () => {
-    setupAPIKeyInput()
-    outputElement = document.querySelector('#output')
+    setupAPIKeyInput();
+    outputElement = document.querySelector('#output');
+    const savePromptButton = document.querySelector('#save-prompt');
+    savePromptButton.addEventListener('click', saveQuickPrompt);
 
-    const fileInput = document.querySelector('#audio-file')
+    const fileInput = document.querySelector('#audio-file');
     fileInput.addEventListener('change', () => {
-        setTranscribingMessage('转录中...')
-
-        const apiKey = localStorage.getItem('api-key')
-        const file = fileInput.files[0]
-        const language = document.querySelector('#language').value
-        const response_format = document.querySelector('#response_format').value
-        const response = transcribe(apiKey, file, language, response_format)
+        setTranscribingMessage('转录中...');
+        const apiKey = localStorage.getItem('api-key');
+        const file = fileInput.files[0];
+        const language = document.querySelector('#language').value;
+        const response_format = document.querySelector('#response_format').value;
+        const promptInput = document.querySelector('#prompt');
+        const response = transcribe(apiKey, file, language, response_format, promptInput.value);
 
         response.then(transcription => {
             if (response_format === 'verbose_json') {
-                setTranscribedSegments(transcription.segments)
+                setTranscribedSegments(transcription.segments);
             } else {
-                setTranscribedPlainText(transcription)
+                setTranscribedPlainText(transcription);
                 if (response_format === 'srt') {
-                    downloadFile(transcription, 'transcription.srt')
+                    downloadFile(transcription, 'transcription.srt');
                 } else if (response_format === 'vtt') {
-                    downloadFile(transcription, 'transcription.vtt')
+                    downloadFile(transcription, 'transcription.vtt');
                 }
             }
+            fileInput.value = null;
+        });
+    });
 
-            fileInput.value = null
-        })
-    })
-})
+    // 加载快捷提示词
+    loadQuickPrompts();
+});
