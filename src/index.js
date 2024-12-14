@@ -1,6 +1,6 @@
 const url = 'https://api.chatanywhere.tech/v1/audio/transcriptions'
 
-const transcribe = (apiKey, file, language, response_format, prompt) => {
+const transcribe = (apiKey, file, language, response_format, prompt, temperature) => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('model', 'whisper-1')
@@ -10,6 +10,9 @@ const transcribe = (apiKey, file, language, response_format, prompt) => {
     }
     if (prompt) {
         formData.append('prompt', prompt)
+    }
+    if (temperature) {
+        formData.append('temperature', temperature)
     }
 
     const headers = new Headers()
@@ -21,7 +24,6 @@ const transcribe = (apiKey, file, language, response_format, prompt) => {
         headers: headers
     }).then(response => {
         console.log(response)
-        // Automatically handle response format
         if (response_format === 'json' || response_format === 'verbose_json') {
             return response.json()
         } else {
@@ -29,6 +31,7 @@ const transcribe = (apiKey, file, language, response_format, prompt) => {
         }
     }).catch(error => console.error(error))
 }
+
 
 
 const hideStartView = () => {
@@ -94,32 +97,20 @@ const setTranscribedSegments = (segments) => {
     }
 }
 
-const downloadFile = (content, filename) => {
-    const element = document.createElement('a')
-    const blob = new Blob([content], { type: 'text/plain' })
-    element.href = URL.createObjectURL(blob)
-    element.download = filename
-    document.body.appendChild(element)
-    element.click()
-    document.body.removeChild(element)
-}
-
-// 保存快捷提示词到本地存储
 const saveQuickPrompt = () => {
     const quickPromptInput = document.querySelector('#quick-prompt');
     const savedQuickPrompts = localStorage.getItem('quick-prompts') || '';
     const newQuickPrompts = savedQuickPrompts ? `${savedQuickPrompts},${quickPromptInput.value}` : quickPromptInput.value;
     localStorage.setItem('quick-prompts', newQuickPrompts);
-    quickPromptInput.value = ''; // 清空输入框
-    loadQuickPrompts(); // 加载并显示快捷提示词
+    quickPromptInput.value = '';
+    loadQuickPrompts();
 };
 
-// 加载并显示快捷提示词
 const loadQuickPrompts = () => {
     const savedQuickPrompts = localStorage.getItem('quick-prompts') || '';
     const quickPrompts = savedQuickPrompts.split(',');
     const container = document.querySelector('#quick-prompts-container');
-    container.innerHTML = ''; // 清空容器
+    container.innerHTML = '';
 
     quickPrompts.forEach((prompt, index) => {
         if (prompt) {
@@ -138,10 +129,10 @@ const loadQuickPrompts = () => {
             deleteButton.innerText = '×';
             deleteButton.classList.add('quick-prompt-button');
             deleteButton.addEventListener('click', (event) => {
-                event.stopPropagation(); // 阻止事件冒泡，避免触发快捷提示词按钮的点击事件
+                event.stopPropagation();
                 const updatedQuickPrompts = quickPrompts.filter((_, i) => i !== index).join(',');
                 localStorage.setItem('quick-prompts', updatedQuickPrompts);
-                loadQuickPrompts(); // 重新加载快捷提示词
+                loadQuickPrompts();
             });
 
             buttonContainer.appendChild(button);
@@ -151,7 +142,24 @@ const loadQuickPrompts = () => {
     });
 };
 
-// 设置事件监听器
+const getTimeStamp = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+};
+
+const downloadFile = (content, originalFilename, format) => {
+    const timestamp = getTimeStamp();
+    const Filename = originalFilename.split('.')[0];
+    const filename = `${Filename}_${timestamp}.${format}`;
+    const element = document.createElement('a');
+    const blob = new Blob([content], { type: 'text/plain' });
+    element.href = URL.createObjectURL(blob);
+    element.download = filename;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+};
+
 window.addEventListener('load', () => {
     setupAPIKeyInput();
     outputElement = document.querySelector('#output');
@@ -163,10 +171,13 @@ window.addEventListener('load', () => {
         setTranscribingMessage('转录中...');
         const apiKey = localStorage.getItem('api-key');
         const file = fileInput.files[0];
+        const originalFilename = file.name;
         const language = document.querySelector('#language').value;
         const response_format = document.querySelector('#response_format').value;
         const promptInput = document.querySelector('#prompt');
-        const response = transcribe(apiKey, file, language, response_format, promptInput.value);
+        const temperatureInput = document.querySelector('#temperature-number');
+        const temperature = temperatureInput.value;
+        const response = transcribe(apiKey, file, language, response_format, promptInput.value, temperature);
 
         response.then(transcription => {
             if (response_format === 'verbose_json') {
@@ -174,15 +185,29 @@ window.addEventListener('load', () => {
             } else {
                 setTranscribedPlainText(transcription);
                 if (response_format === 'srt') {
-                    downloadFile(transcription, 'transcription.srt');
+                    downloadFile(transcription, originalFilename, 'srt');
                 } else if (response_format === 'vtt') {
-                    downloadFile(transcription, 'transcription.vtt');
+                    downloadFile(transcription, originalFilename, 'vtt');
                 }
             }
             fileInput.value = null;
         });
     });
 
-    // 加载快捷提示词
+
     loadQuickPrompts();
+
+    const temperatureRange = document.querySelector('#temperature-input');
+    const temperatureNumber = document.querySelector('#temperature-number');
+
+    temperatureRange.addEventListener('input', () => {
+        const value = temperatureRange.value;
+        temperatureNumber.value = value;
+    });
+
+    temperatureNumber.addEventListener('input', () => {
+        const value = temperatureNumber.value;
+        temperatureRange.value = value;
+    });
 });
+

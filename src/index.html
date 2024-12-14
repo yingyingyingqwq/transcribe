@@ -88,13 +88,15 @@
                 <option value="verbose_json" selected>普通文本</option>
                 <option value="srt">SRT</option>
                 <option value="vtt">VTT</option>
-            </select><br />
+            </select>
             <br>
             <br>
             Prompt：
             <input type="text" id="prompt" placeholder="输入提示词">
             <br>
-
+            温度参数：
+            <p class="temperature-explain">越准确</p><input type="range" min="0" max="1" step="0.1" value="0" id="temperature-input" class="slider"><p class="temperature-explain">越随机</p>
+            <input type="number" id="temperature-number" class="number-input" value="0" min="0" max="1" step="0.1">
             <br>
             <br>
             <br>
