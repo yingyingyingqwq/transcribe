@@ -144,7 +144,7 @@ const loadQuickPrompts = () => {
 
 const getTimeStamp = () => {
     const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
 };
 
 const downloadFile = (content, originalFilename, format) => {
@@ -211,3 +211,79 @@ window.addEventListener('load', () => {
     });
 });
 
+window.addEventListener('load', () => {
+    // 获取拖拽区域元素
+    const dropArea = document.getElementById('drop-area');
+
+    // 显示拖拽区域
+    const showDropArea = () => {
+        dropArea.classList.remove('hidden');
+        dropArea.classList.add('active');
+    };
+
+    // 隐藏拖拽区域
+    const hideDropArea = () => {
+        dropArea.classList.remove('active');
+        dropArea.classList.add('hidden');
+    };
+
+    // 处理拖拽事件
+    document.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        showDropArea();
+    });
+
+    dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.classList.add('active');
+    });
+
+    dropArea.addEventListener('dragleave', () => {
+        dropArea.classList.remove('active');
+    });
+
+    dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropArea.classList.remove('active');
+        hideDropArea();
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFiles(files);
+        }
+    });
+
+    const handleFiles = (files) => {
+        const file = files[0];
+        if (file) {
+            setTranscribingMessage('转录中...');
+            const apiKey = localStorage.getItem('api-key');
+            const originalFilename = file.name;
+            const language = document.querySelector('#language').value;
+            const response_format = document.querySelector('#response_format').value;
+            const promptInput = document.querySelector('#prompt');
+            const temperatureInput = document.querySelector('#temperature-number');
+            const temperature = temperatureInput.value;
+            const response = transcribe(apiKey, file, language, response_format, promptInput.value, temperature);
+
+            response.then(transcription => {
+                if (response_format === 'verbose_json') {
+                    setTranscribedSegments(transcription.segments);
+                } else {
+                    setTranscribedPlainText(transcription);
+                    if (response_format === 'srt') {
+                        downloadFile(transcription, originalFilename, 'srt');
+                    } else if (response_format === 'vtt') {
+                        downloadFile(transcription, originalFilename, 'vtt');
+                    }
+                }
+                fileInput.value = null;
+            });
+        }
+    };
+
+    const fileInput = document.querySelector('#audio-file');
+    fileInput.addEventListener('change', () => {
+        handleFiles(fileInput.files);
+    });
+});
